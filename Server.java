@@ -76,6 +76,7 @@ public class Server{
 						break;
 					}
 				}
+				// Assigning an id to the sensor
 				Integer maxId = -1;
 				for (Integer x : printWritersMap.keySet()) {
 					if (x > maxId)
