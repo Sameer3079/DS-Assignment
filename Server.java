@@ -3,23 +3,28 @@
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.OptionalDataException;
 import java.io.PrintWriter;
+import java.io.StreamCorruptedException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.HashMap;
 import java.util.Scanner;
 
 public class Server{
 
 	private static final int PORT = 9876;
-	
-	private static HashMap<Integer, ObjectOutputStream> objectsMap = new HashMap<Integer, ObjectOutputStream>();
-	private static HashMap<Integer, PrintWriter> printWritersMap = new HashMap<Integer, PrintWriter>();
+	private static int sensorCount = 0;
+	private static HashMap<String, ObjectInputStream> objectsMap = new HashMap<String, ObjectInputStream>();
+	private static HashMap<String, PrintWriter> printWritersMap = new HashMap<String, PrintWriter>();
 	private static String serverPassword;
 	
+	// Creates new threads when sensors connect
+	// Then starts executing the thread
 	public static void main(String[] args) throws Exception{
-		// TODO Auto-generated method stub
 
 		System.out.print("Enter a server password: ");
 		Scanner in = new Scanner(System.in);
@@ -32,6 +37,7 @@ public class Server{
 				new Handler(sensorSocket.accept()).start();
 			}
 		}finally {
+			sensorCount -= 1;
 			sensorSocket.close();
 		}
 		
@@ -43,10 +49,11 @@ public class Server{
 	}*/
 	
 	private static class Handler extends Thread{
-		private Integer sensorId = -1;
+		private PrintWriter fileWriter;
+		private String sensorId = "";
 		private Socket sensorSocket;
-		//private ObjectInputStream inReading; // Input readings from the sensors
-		private ObjectOutputStream objectStream;
+		private ObjectInputStream objectInputStream; // Input readings from the sensors
+		//private ObjectOutputStream objectOutputStream;
 		private BufferedReader in; // Used for authentication
 		private PrintWriter out; // Output to the sensors
 		private String enteredPassword;
@@ -59,46 +66,79 @@ public class Server{
 			try {
 				in =  new BufferedReader(new InputStreamReader(sensorSocket.getInputStream()));
 				out = new PrintWriter(sensorSocket.getOutputStream(), true);
-				objectStream = new ObjectOutputStream(sensorSocket.getOutputStream());
+				//objectOutputStream = new ObjectOutputStream(sensorSocket.getOutputStream());
+				objectInputStream = new ObjectInputStream(sensorSocket.getInputStream());
+				
 				
 				// Authenticating the sensor
 				while(true) {
-					//out.println("ENTER_SERVER_PASSWORD");
-					enteredPassword = in.readLine();					
+					enteredPassword = in.readLine(); // IN 1
 					if (!enteredPassword.equals(serverPassword)) {
-						out.println("Incorrect Password");
+						out.println("Incorrect Password"); // OUT 2
 						System.out.println(new String("Incorrect Password"));
-						return;
-					}
-					else {
-						out.println("Password is Correct");
+					}else {
+						out.println("Password is Correct"); // OUT 2
 						System.out.println("Correct Password");
 						break;
 					}
 				}
-				// Assigning an id to the sensor
-				Integer maxId = -1;
-				for (Integer x : printWritersMap.keySet()) {
-					if (x > maxId)
-						maxId = x;
+				while(true) {
+					sensorId = in.readLine(); // IN 3
+					//System.out.println("Sensor ID Received: " + sensorId);
+					if (printWritersMap.containsKey(sensorId)) {
+						System.out.println("Sensor ID is INVALID");
+						out.println("INVALID"); // OUT 4
+					}
+					else {
+						System.out.println("Sensor ID is VALID");
+						out.println("VALID"); // OUT 4
+						break;
+					}
+							
 				}
-				sensorId = maxId + 1;
-				
-				out.println(sensorId);
-				
 				printWritersMap.put(sensorId, out);
-				objectsMap.put(sensorId, objectStream);
-				
+				//objectsMap.put(sensorId, objectInputStream);
 				System.out.println("New sensor connected; Id: " + sensorId);
+				
+				sensorCount += 1;
+				fileWriter = new PrintWriter("data.txt", "UTF-8");
+				fileWriter.println("Sensor Count: " + sensorCount);
+				fileWriter.close();
+				
+				// Entering the processing loop
+				Reading reading = new Reading();
+				int count = 0;
+				while(true) {
+					count += 1;
+					count %= 2;
+					try {
+						if(count == 0) {
+							reading = (Reading)objectInputStream.readObject(); // IN 6
+							reading.PrintReading();
+						}
+					} catch(SocketException e) {
+						System.out.println("Sensor has disconnected");
+						return;
+					}catch (IOException e) {
+						e.printStackTrace();
+					}catch (ClassNotFoundException e) {
+						e.printStackTrace();
+					}catch (ClassCastException e) {
+						e.printStackTrace();
+						System.out.println(e.getClass().toString());
+					}
+				}
 			}
 			catch(IOException e) {
-				System.out.println("Error in run() : " + e.toString());
+				e.printStackTrace();
+				System.out.println("OUTER IOException " + e.toString());
 			}
 			finally{
 				// Client has been disconnected
 				// TODO : Handle it
 			}
 		}
+		
 	}
 
 }
