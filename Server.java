@@ -1,6 +1,7 @@
 
 
 import java.io.BufferedReader;
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
@@ -107,26 +108,44 @@ public class Server{
 				
 				// Entering the processing loop
 				Reading reading = new Reading();
-				int count = 0;
 				while(true) {
-					count += 1;
-					count %= 2;
+					
 					try {
-						if(count == 0) {
-							reading = (Reading)objectInputStream.readObject(); // IN 6
-							reading.PrintReading();
-						}
-					} catch(SocketException e) {
+						reading = (Reading) objectInputStream.readObject(); // IN 6
+					} catch (ClassNotFoundException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					} catch (EOFException e) {
 						System.out.println("Sensor has disconnected");
 						return;
-					}catch (IOException e) {
-						e.printStackTrace();
-					}catch (ClassNotFoundException e) {
-						e.printStackTrace();
-					}catch (ClassCastException e) {
-						e.printStackTrace();
-						System.out.println(e.getClass().toString());
 					}
+					
+					reading.activateAlert();
+					if (reading.isAlert()) {
+						reading.PrintAlertReading();
+					}
+					else {
+						reading.PrintReading();
+					}
+					
+					
+					
+//					try {
+//						if(count == 0) {
+//							reading = (Reading)objectInputStream.readObject(); // IN 6
+//							reading.PrintReading();
+//						}
+//					} catch(SocketException e) {
+//						System.out.println("Sensor has disconnected");
+//						return;
+//					}catch (IOException e) {
+//						e.printStackTrace();
+//					}catch (ClassNotFoundException e) {
+//						e.printStackTrace();
+//					}catch (ClassCastException e) {
+//						e.printStackTrace();
+//						System.out.println(e.getClass().toString());
+//					}
 				}
 			}
 			catch(IOException e) {

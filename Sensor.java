@@ -93,18 +93,22 @@ public class Sensor {
 		
 		// Entering processing loop
 		Reading reading = new Reading();
-		int count= 0, sleepDuration = 10;
+		int count= 0, sleepDuration = 5000; // Change to = 5 * 60 * 1000
 		while(true) {
 			try {
 				Thread.sleep(sleepDuration);
 				count += 1;
-				count %= 2;
+				count %= 2; // Change to = (60 * 60 * 1000) / sleepDuration;
 				reading = GenerateReadings();
 				reading.activateAlert();
 				reading.setSensorId(sensorId);
 				
-				if (count == 0) {
-					System.out.println("COUNT = 0");
+				if(reading.isAlert()) {
+					outputObjectStream.writeObject(reading); // OUT 5
+				}
+				
+				if (count == 0 && !reading.isAlert()) {
+					//System.out.println("COUNT = 0");
 					outputObjectStream.writeObject(reading); // OUT 6
 				}
 
@@ -127,10 +131,10 @@ public class Sensor {
 		// TODO : Improve Generation of random numbers
 		Random random = new Random();
 		Reading data = new Reading();
-		data.setTemperature(random.nextInt(50));
+		data.setTemperature(random.nextInt(80)); // 
 		data.setBatteryLevel(random.nextInt(100));
 		data.setSmokeLevel(random.nextInt(10));
-		data.setCo2Level(random.nextInt(300));
+		data.setCo2Level(random.nextInt(600)); // Normal= 300
 		
 		return data;
 	}
